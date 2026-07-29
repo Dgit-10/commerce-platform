@@ -1,20 +1,19 @@
 package com.ecommerce.user_service.service;
 
+import com.ecommerce.user_service.dto.CreateUserRequest;
+import com.ecommerce.user_service.dto.UpdateUserRequest;
+import com.ecommerce.user_service.dto.UserResponse;
 import com.ecommerce.user_service.entity.User;
-import com.ecommerce.user_service.repository.UserRepository;
-import org.springframework.stereotype.Service;
 
-@Service
-public class UserService {
+import java.util.List;
+import java.util.UUID;
 
-    private final UserRepository userRepository;
+public interface UserService {
 
-
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
-
-    public User saveUser(User user) {
-        return userRepository.save(user);
-    }
+    //Define all the methods which must be implemented
+    UserResponse createUser(CreateUserRequest request);
+    UserResponse updateUser(UUID userId, UpdateUserRequest userResponse);
+    UserResponse getUser(UUID userId);
+    List<UserResponse> getAllUsers();
+    void deleteUser(UUID userId);
 }
