@@ -1,10 +1,16 @@
 package com.ecommerce.product_service.service.impl;
 
+import com.common_packages.common_packages.dto.ApiResponse;
+import com.common_packages.common_packages.exception.DuplicateSKUException;
+import com.common_packages.common_packages.exception.InvalidStockException;
+import com.common_packages.common_packages.exception.ProductNotFoundException;
+import com.common_packages.common_packages.util.ResponseBuilder;
 import com.ecommerce.product_service.entity.Product;
 import com.ecommerce.product_service.repository.ProductRepository;
 import com.ecommerce.product_service.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +42,7 @@ public class ProductServiceImpl implements ProductService {
         Product savedProduct = productRepository.save(product);
         log.info("Product created successfully with ID: {}", savedProduct.getId());
 
-        return ResponseBuilder.success(savedProduct, "Product added successfully");
+        return ResponseBuilder.success(savedProduct, "Product added successfully").getBody();
     }
 
     @Override
@@ -61,7 +67,7 @@ public class ProductServiceImpl implements ProductService {
         Product updatedProduct = productRepository.save(existingProduct);
         log.info("Product updated successfully for ID: {}", id);
 
-        return ResponseBuilder.success(updatedProduct, "Product updated successfully");
+        return ResponseBuilder.success(updatedProduct, "Product updated successfully").getBody();
     }
 
     @Override
@@ -75,7 +81,7 @@ public class ProductServiceImpl implements ProductService {
         productRepository.save(product);
         log.info("Product soft-deleted successfully for ID: {}", id);
 
-        return ResponseBuilder.success("Product deleted successfully");
+        return ResponseBuilder.success(null,"Product deleted successfully").getBody();
     }
 
     @Override
@@ -83,7 +89,7 @@ public class ProductServiceImpl implements ProductService {
     public ApiResponse<Product> getProduct(Long id) {
         log.info("Fetching details for product ID: {}", id);
         Product product = findActiveProductEntity(id);
-        return ResponseBuilder.success(product, "Product retrieved successfully");
+        return ResponseBuilder.success(product, "Product retrieved successfully").getBody();
     }
 
     @Override
@@ -91,7 +97,7 @@ public class ProductServiceImpl implements ProductService {
     public ApiResponse<List<Product>> getAllProducts() {
         log.info("Fetching all active products");
         List<Product> products = productRepository.findByActiveTrue();
-        return ResponseBuilder.success(products, "All active products retrieved successfully");
+        return ResponseBuilder.success(products, "All active products retrieved successfully").getBody();
     }
 
     @Override
@@ -99,7 +105,7 @@ public class ProductServiceImpl implements ProductService {
     public ApiResponse<List<Product>> searchProducts(String keyword) {
         log.info("Searching products with keyword: '{}'", keyword);
         List<Product> products = productRepository.findByProductNameContainingIgnoreCaseAndActiveTrue(keyword);
-        return ResponseBuilder.success(products, "Product search completed successfully");
+        return ResponseBuilder.success(products, "Product search completed successfully").getBody();
     }
 
     @Override
@@ -107,7 +113,7 @@ public class ProductServiceImpl implements ProductService {
     public ApiResponse<List<Product>> getProductsByCategory(String category) {
         log.info("Fetching active products under category: '{}'", category);
         List<Product> products = productRepository.findByCategoryAndActiveTrue(category);
-        return ResponseBuilder.success(products, "Category products retrieved successfully");
+        return ResponseBuilder.success(products, "Category products retrieved successfully").getBody();
     }
 
     @Override
@@ -128,7 +134,7 @@ public class ProductServiceImpl implements ProductService {
         Product savedProduct = productRepository.save(product);
         log.info("Stock updated successfully for product ID: {}. New total stock: {}", id, updatedStock);
 
-        return ResponseBuilder.success(savedProduct, "Product stock updated successfully");
+        return ResponseBuilder.success(savedProduct, "Product stock updated successfully").getBody();
     }
 
     private Product findActiveProductEntity(Long id) {

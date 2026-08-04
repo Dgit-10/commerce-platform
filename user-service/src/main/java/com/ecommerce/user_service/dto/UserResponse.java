@@ -1,25 +1,24 @@
 package com.ecommerce.user_service.dto;
 
-import lombok.*;
-
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class UserResponse {
-
-    private String userId;
-
-    private String firstName;
-
-    private String lastName;
-
+    private Long id;
     private String email;
-
+    private String fullName;
     private String phoneNumber;
+    private String address;
 
-    private String role;
+    public UserResponse(Long id, String email, String fullName, String phoneNumber, String address) {
+        this.id = id;
+        this.email = email;
+        this.fullName = fullName;
+        this.phoneNumber = phoneNumber;
+        this.address = address;
+    }
 
-    private String status;
+    // Getters & Setters
+    public Long getId() { return id; }
+    public String getEmail() { return email; }
+    public String getFullName() { return fullName; }
+    public String getPhoneNumber() { return phoneNumber; }
+    public String getAddress() { return address; }
 }

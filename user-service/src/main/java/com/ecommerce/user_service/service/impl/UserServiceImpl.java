@@ -1,91 +1,76 @@
 package com.ecommerce.user_service.service.impl;
 
-import com.ecommerce.user_service.dto.CreateUserRequest;
-import com.ecommerce.user_service.dto.UpdateUserRequest;
+
+import com.common_packages.common_packages.event.UserRegisteredEvent;
+import com.common_packages.common_packages.exception.ResourceNotFoundException;
+import com.ecommerce.user_service.kafka.UserEventProducer;
+import com.ecommerce.user_service.dto.UserRegistrationRequest;
 import com.ecommerce.user_service.dto.UserResponse;
 import com.ecommerce.user_service.entity.User;
-import com.ecommerce.user_service.mapper.UserMapper;
 import com.ecommerce.user_service.repository.UserRepository;
 import com.ecommerce.user_service.service.UserService;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
-@Transactional
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final UserMapper userMapper;
+    private final UserEventProducer userEventProducer;
+
+    public UserServiceImpl(UserRepository userRepository, UserEventProducer userEventProducer) {
+        this.userRepository = userRepository;
+        this.userEventProducer = userEventProducer;
+    }
 
     @Override
-    public UserResponse createUser(CreateUserRequest request) {
-        // Business Rule 1: Email uniqueness
+    @Transactional
+    public UserResponse registerUser(UserRegistrationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateResourceException("Email already registered");
+            throw new IllegalArgumentException("Email already registered: " + request.getEmail());
         }
 
-        // Business Rule 2: Optional Phone uniqueness
-        if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new DuplicateResourceException("Phone number already registered");
-        }
+        // In a production app, pass password through BCryptPasswordEncoder
+        String dummyHashedPassword = "hashed_" + request.getPassword();
 
-        // Business Rule 3: Map DTO to Entity & Set Defaults
-        User user = userMapper.toEntity(request);
-        user.setUserId(UUID.randomUUID().toString());
-        user.setRole(User.Role.CUSTOMER);
-        user.setStatus(User.Status.ACTIVE);
-
-        LocalDateTime now = LocalDateTime.now();
-        user.setCreatedAt(now);
-        user.setUpdatedAt(now);
+        User user = new User(
+                request.getEmail(),
+                dummyHashedPassword,
+                request.getFullName(),
+                request.getPhoneNumber(),
+                request.getAddress()
+        );
 
         User savedUser = userRepository.save(user);
-        return userMapper.toResponse(savedUser);
+
+        // Produce Kafka event asynchronously after persistence
+        UserRegisteredEvent event = new UserRegisteredEvent(
+                savedUser.getId(),
+                savedUser.getEmail(),
+                savedUser.getFullName(),
+                LocalDateTime.now()
+        );
+        userEventProducer.publishUserRegisteredEvent(event);
+
+        return mapToResponse(savedUser);
     }
 
     @Override
-    public UserResponse updateUser(UUID userId, UpdateUserRequest request) {
-        // Business Rule 1: User must exist
-        User existingUser = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
-
-        // Business Rule 2: Update allowed fields
-        userMapper.updateEntityFromDto(request, existingUser);
-
-        // Business Rule 3: Update timestamp
-        existingUser.setUpdatedAt(LocalDateTime.now());
-
-        User updatedUser = userRepository.save(existingUser);
-        return userMapper.toResponse(updatedUser);
+    public UserResponse getUserById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + id));
+        return mapToResponse(user);
     }
 
-    @Override
-    public UserResponse getUser(UUID userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
-        return userMapper.toResponse(user);
-    }
-
-    @Override
-    public List<UserResponse> getAllUsers() {
-        return userRepository.findAll()
-                .stream()
-                .map(userMapper::toResponse)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public void deleteUser(UUID userId) {
-        User existingUser = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
-
-        userRepository.delete(existingUser);
+    private UserResponse mapToResponse(User user) {
+        return new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getPhoneNumber(),
+                user.getAddress()
+        );
     }
 }

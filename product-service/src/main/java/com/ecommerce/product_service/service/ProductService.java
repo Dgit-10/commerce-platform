@@ -1,6 +1,9 @@
 package com.ecommerce.product_service.service;
 
+import com.common_packages.common_packages.dto.ApiResponse;
 import com.ecommerce.product_service.entity.Product;
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 
 public interface ProductService {
@@ -9,7 +12,7 @@ public interface ProductService {
 
     ApiResponse<Product> updateProduct(Long id, Product product);
 
-    ApiResponse<Void> deleteProduct(Long id);
+    @Nullable ApiResponse<Object> deleteProduct(Long id);
 
     ApiResponse<Product> getProduct(Long id);
 
