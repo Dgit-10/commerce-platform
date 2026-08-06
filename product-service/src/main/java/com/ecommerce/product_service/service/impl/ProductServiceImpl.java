@@ -1,148 +1,86 @@
 package com.ecommerce.product_service.service.impl;
 
-import com.common_packages.common_packages.dto.ApiResponse;
-import com.common_packages.common_packages.exception.DuplicateSKUException;
-import com.common_packages.common_packages.exception.InvalidStockException;
-import com.common_packages.common_packages.exception.ProductNotFoundException;
-import com.common_packages.common_packages.util.ResponseBuilder;
-import com.ecommerce.product_service.entity.Product;
+import com.common_packages.common_packages.exception.ResourceNotFoundException;
+import com.ecommerce.product_service.dto.CreateProductRequest;
+import com.ecommerce.product_service.dto.ProductResponse;
 import com.ecommerce.product_service.repository.ProductRepository;
 import com.ecommerce.product_service.service.ProductService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductServiceImpl.class);
     private final ProductRepository productRepository;
 
-    @Override
-    @Transactional
-    public ApiResponse<Product> addProduct(Product product) {
-        log.info("Attempting to create new product with SKU: {}", product.getSku());
-
-        if (productRepository.existsBySku(product.getSku())) {
-            log.error("Product creation failed. Duplicate SKU: {}", product.getSku());
-            throw new DuplicateSKUException("Product with SKU '" + product.getSku() + "' already exists.");
-        }
-
-        if (product.getStockQuantity() != null && product.getStockQuantity() < 0) {
-            log.error("Product creation failed. Invalid initial stock: {}", product.getStockQuantity());
-            throw new InvalidStockException("Initial stock quantity cannot be negative.");
-        }
-
-        product.setActive(true);
-        Product savedProduct = productRepository.save(product);
-        log.info("Product created successfully with ID: {}", savedProduct.getId());
-
-        return ResponseBuilder.success(savedProduct, "Product added successfully").getBody();
+    public ProductServiceImpl(ProductRepository productRepository) {
+        this.productRepository = productRepository;
     }
 
     @Override
     @Transactional
-    public ApiResponse<Product> updateProduct(Long id, Product productDetails) {
-        log.info("Attempting to update product ID: {}", id);
+    public ProductResponse createProduct(CreateProductRequest request) {
+        com.ecommerce.app.product.entity.Product product = new com.ecommerce.app.product.entity.Product(
+                request.getName(),
+                request.getDescription(),
+                request.getPrice(),
+                request.getStockQuantity()
+        );
+        com.ecommerce.app.product.entity.Product savedProduct = productRepository.save(product);
+        return mapToResponse(savedProduct);
+    }
 
-        Product existingProduct = findActiveProductEntity(id);
+    @Override
+    public ProductResponse getProductById(Long id) {
+        com.ecommerce.app.product.entity.Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
+        return mapToResponse(product);
+    }
 
-        if (!existingProduct.getSku().equals(productDetails.getSku()) && productRepository.existsBySku(productDetails.getSku())) {
-            log.error("Product update failed. SKU '{}' already exists.", productDetails.getSku());
-            throw new DuplicateSKUException("Product with SKU '" + productDetails.getSku() + "' already exists.");
-        }
-
-        existingProduct.setSku(productDetails.getSku());
-        existingProduct.setProductName(productDetails.getProductName());
-        existingProduct.setDescription(productDetails.getDescription());
-        existingProduct.setBrand(productDetails.getBrand());
-        existingProduct.setCategory(productDetails.getCategory());
-        existingProduct.setPrice(productDetails.getPrice());
-
-        Product updatedProduct = productRepository.save(existingProduct);
-        log.info("Product updated successfully for ID: {}", id);
-
-        return ResponseBuilder.success(updatedProduct, "Product updated successfully").getBody();
+    @Override
+    public List<ProductResponse> getAllProducts() {
+        return productRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
-    public ApiResponse<Void> deleteProduct(Long id) {
-        log.info("Executing soft delete for product ID: {}", id);
+    public ProductResponse addStock(Long productId, Integer quantity) {
+        com.ecommerce.app.product.entity.Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
 
-        Product product = findActiveProductEntity(id);
+        product.addStock(quantity);
+        com.ecommerce.app.product.entity.Product updatedProduct = productRepository.save(product);
+        return mapToResponse(updatedProduct);
+    }
 
-        product.setActive(false);
+    @Override
+    @Transactional
+    public void deductStockForOrder(Long productId, Integer quantity) {
+        com.ecommerce.app.product.entity.Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
+
+        product.deductStock(quantity);
         productRepository.save(product);
-        log.info("Product soft-deleted successfully for ID: {}", id);
-
-        return ResponseBuilder.success(null,"Product deleted successfully").getBody();
+        log.info("Deducted stock for Product ID: {}. New Stock: {}", productId, product.getStockQuantity());
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public ApiResponse<Product> getProduct(Long id) {
-        log.info("Fetching details for product ID: {}", id);
-        Product product = findActiveProductEntity(id);
-        return ResponseBuilder.success(product, "Product retrieved successfully").getBody();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public ApiResponse<List<Product>> getAllProducts() {
-        log.info("Fetching all active products");
-        List<Product> products = productRepository.findByActiveTrue();
-        return ResponseBuilder.success(products, "All active products retrieved successfully").getBody();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public ApiResponse<List<Product>> searchProducts(String keyword) {
-        log.info("Searching products with keyword: '{}'", keyword);
-        List<Product> products = productRepository.findByProductNameContainingIgnoreCaseAndActiveTrue(keyword);
-        return ResponseBuilder.success(products, "Product search completed successfully").getBody();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public ApiResponse<List<Product>> getProductsByCategory(String category) {
-        log.info("Fetching active products under category: '{}'", category);
-        List<Product> products = productRepository.findByCategoryAndActiveTrue(category);
-        return ResponseBuilder.success(products, "Category products retrieved successfully").getBody();
-    }
-
-    @Override
-    @Transactional
-    public ApiResponse<Product> updateStock(Long id, Integer quantityDelta) {
-        log.info("Updating stock for product ID: {} with delta: {}", id, quantityDelta);
-
-        Product product = findActiveProductEntity(id);
-        int updatedStock = product.getStockQuantity() + quantityDelta;
-
-        if (updatedStock < 0) {
-            log.error("Stock update failed for product ID: {}. Current stock: {}, requested delta: {}",
-                    id, product.getStockQuantity(), quantityDelta);
-            throw new InvalidStockException("Insufficient stock available. Current stock: " + product.getStockQuantity());
-        }
-
-        product.setStockQuantity(updatedStock);
-        Product savedProduct = productRepository.save(product);
-        log.info("Stock updated successfully for product ID: {}. New total stock: {}", id, updatedStock);
-
-        return ResponseBuilder.success(savedProduct, "Product stock updated successfully").getBody();
-    }
-
-    private Product findActiveProductEntity(Long id) {
-        return productRepository.findById(id)
-                .filter(Product::getActive)
-                .orElseThrow(() -> {
-                    log.error("Product lookup failed for ID: {} (Product not found or inactive)", id);
-                    return new ProductNotFoundException("Product not found with ID: " + id);
-                });
+    private ProductResponse mapToResponse(com.ecommerce.app.product.entity.Product product) {
+        return new ProductResponse(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getStockQuantity(),
+                product.getCreatedAt(),
+                product.getUpdatedAt()
+        );
     }
 }
