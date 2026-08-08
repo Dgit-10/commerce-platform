@@ -1,5 +1,8 @@
 package com.common_packages.common_packages.dto;
 
+import com.common_packages.common_packages.util.ResponseBuilder;
+import lombok.Builder;
+
 import java.time.LocalDateTime;
 
 public class ApiResponse<T> {

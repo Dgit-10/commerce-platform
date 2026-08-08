@@ -5,6 +5,7 @@ import com.ecommerce.order_service.entity.OrderStatus;
 import com.ecommerce.order_service.service.OrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 @Component

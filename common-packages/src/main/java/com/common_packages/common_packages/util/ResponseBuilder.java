@@ -8,27 +8,27 @@ import java.time.LocalDateTime;
 
 public class ResponseBuilder {
 
-    public static <T> ResponseEntity<ApiResponse<T>> success(T data, String message, HttpStatus status) {
-        ApiResponse<T> response = ApiResponse.<T>builder()
-                .success(true)
-                .message(message)
-                .timestamp(LocalDateTime.now())
-                .data(data)
-                .build();
+    public static <T> ResponseEntity<ApiResponse<T>> success(
+            T data, String message, HttpStatus status) {
+
+        ApiResponse<T> response =
+                new ApiResponse<>(true, message, data);
+
         return new ResponseEntity<>(response, status);
     }
 
-    public static <T> ResponseEntity<ApiResponse<T>> success(T data, String message) {
+    public static <T> ResponseEntity<ApiResponse<T>> success(
+            T data, String message) {
+
         return success(data, message, HttpStatus.OK);
     }
 
-    public static <T> ResponseEntity<ApiResponse<T>> error(String message, HttpStatus status) {
-        ApiResponse<T> response = ApiResponse.<T>builder()
-                .success(false)
-                .message(message)
-                .timestamp(LocalDateTime.now())
-                .data(null)
-                .build();
+    public static <T> ResponseEntity<ApiResponse<T>> error(
+            String message, HttpStatus status) {
+
+        ApiResponse<T> response =
+                new ApiResponse<>(false, message, null);
+
         return new ResponseEntity<>(response, status);
     }
 }
