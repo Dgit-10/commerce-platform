@@ -3,6 +3,7 @@ package com.ecommerce.product_service.service.impl;
 import com.common_packages.common_packages.exception.ResourceNotFoundException;
 import com.ecommerce.product_service.dto.CreateProductRequest;
 import com.ecommerce.product_service.dto.ProductResponse;
+import com.ecommerce.product_service.entity.Product;
 import com.ecommerce.product_service.repository.ProductRepository;
 import com.ecommerce.product_service.service.ProductService;
 import org.slf4j.Logger;
@@ -26,19 +27,19 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductResponse createProduct(CreateProductRequest request) {
-        com.ecommerce.app.product.entity.Product product = new com.ecommerce.app.product.entity.Product(
+        Product product = new Product(
                 request.getName(),
                 request.getDescription(),
                 request.getPrice(),
                 request.getStockQuantity()
         );
-        com.ecommerce.app.product.entity.Product savedProduct = productRepository.save(product);
+        Product savedProduct = productRepository.save(product);
         return mapToResponse(savedProduct);
     }
 
     @Override
     public ProductResponse getProductById(Long id) {
-        com.ecommerce.app.product.entity.Product product = productRepository.findById(id)
+        Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
         return mapToResponse(product);
     }
@@ -53,18 +54,18 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductResponse addStock(Long productId, Integer quantity) {
-        com.ecommerce.app.product.entity.Product product = productRepository.findById(productId)
+        Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
 
         product.addStock(quantity);
-        com.ecommerce.app.product.entity.Product updatedProduct = productRepository.save(product);
+        Product updatedProduct = productRepository.save(product);
         return mapToResponse(updatedProduct);
     }
 
     @Override
     @Transactional
     public void deductStockForOrder(Long productId, Integer quantity) {
-        com.ecommerce.app.product.entity.Product product = productRepository.findById(productId)
+        Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + productId));
 
         product.deductStock(quantity);
@@ -72,7 +73,7 @@ public class ProductServiceImpl implements ProductService {
         log.info("Deducted stock for Product ID: {}. New Stock: {}", productId, product.getStockQuantity());
     }
 
-    private ProductResponse mapToResponse(com.ecommerce.app.product.entity.Product product) {
+    private ProductResponse mapToResponse(Product product) {
         return new ProductResponse(
                 product.getId(),
                 product.getName(),
