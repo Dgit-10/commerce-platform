@@ -18,30 +18,25 @@ public class GatewayConfig {
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
-                // User Service Route
                 .route("user-service", r -> r.path("/api/v1/users/**")
                         .filters(f -> f.filter(jwtFilter.apply(new JwtAuthenticationFilter.Config())))
-                        .uri("http://localhost:8081")) // Point to monolith port or container host
+                        .uri("http://localhost:8081"))
 
-                // Product Service Route
                 .route("product-service", r -> r.path("/api/v1/products/**")
                         .filters(f -> f.filter(jwtFilter.apply(new JwtAuthenticationFilter.Config())))
-                        .uri("http://localhost:8081"))
+                        .uri("http://localhost:8082"))
 
-                // Order Service Route
                 .route("order-service", r -> r.path("/api/v1/orders/**")
                         .filters(f -> f.filter(jwtFilter.apply(new JwtAuthenticationFilter.Config())))
-                        .uri("http://localhost:8081"))
+                        .uri("http://localhost:8084"))
 
-                // Payment Service Route
                 .route("payment-service", r -> r.path("/api/v1/payments/**")
                         .filters(f -> f.filter(jwtFilter.apply(new JwtAuthenticationFilter.Config())))
-                        .uri("http://localhost:8081"))
+                        .uri("http://localhost:8083"))
 
-                // Notification Service Route
                 .route("notification-service", r -> r.path("/api/v1/notifications/**")
                         .filters(f -> f.filter(jwtFilter.apply(new JwtAuthenticationFilter.Config())))
-                        .uri("http://localhost:8081"))
+                        .uri("http://localhost:8085"))
                 .build();
     }
 }

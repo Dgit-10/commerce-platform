@@ -5,11 +5,12 @@ import com.ecommerce.notification_service.entity.Notification;
 import com.ecommerce.notification_service.entity.NotificationStatus;
 import com.ecommerce.notification_service.entity.NotificationType;
 import com.ecommerce.notification_service.repository.NotificationRepository;
+import com.ecommerce.notification_service.service.NotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.ecommerce.app.notification.service.NotificationService;
+
 
 import java.util.List;
 import java.util.stream.Collectors;

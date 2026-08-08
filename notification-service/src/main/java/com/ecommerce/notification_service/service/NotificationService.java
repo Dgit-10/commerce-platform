@@ -1,4 +1,4 @@
-package com.ecommerce.app.notification.service;
+package com.ecommerce.notification_service.service;
 
 import com.ecommerce.notification_service.dto.NotificationResponse;
 import com.ecommerce.notification_service.entity.NotificationType;
