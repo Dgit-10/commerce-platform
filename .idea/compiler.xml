@@ -9,8 +9,9 @@
         <module name="payment-service" />
         <module name="api-gateway" />
         <module name="product-service" />
-        <module name="user-service" />
+        <module name="common-packages (1) (com.common-packages)" />
         <module name="order-service" />
+        <module name="user-service" />
         <module name="common-packages" />
         <module name="notification-service" />
       </profile>
@@ -20,6 +21,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="api-gateway" options="-parameters" />
       <module name="common-packages" options="-parameters" />
+      <module name="common-packages (1) (com.common-packages)" options="-parameters" />
       <module name="notification-service" options="-parameters" />
       <module name="order-service" options="-parameters" />
       <module name="payment-service" options="-parameters" />
