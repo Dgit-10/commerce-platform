@@ -4,11 +4,11 @@ import com.common_packages.common_packages.event.OrderCreatedEvent;
 import com.common_packages.common_packages.event.PaymentProcessedEvent;
 import com.common_packages.common_packages.event.UserRegisteredEvent;
 import com.ecommerce.notification_service.entity.NotificationType;
+import com.ecommerce.notification_service.service.NotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import com.ecommerce.app.notification.service.NotificationService;
 
 @Component
 public class NotificationEventConsumer {

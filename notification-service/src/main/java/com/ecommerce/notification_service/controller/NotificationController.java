@@ -1,8 +1,8 @@
 package com.ecommerce.notification_service.controller;
 
 import com.common_packages.common_packages.dto.ApiResponse;
-import com.ecommerce.app.notification.service.NotificationService;
 import com.ecommerce.notification_service.dto.NotificationResponse;
+import com.ecommerce.notification_service.service.NotificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
