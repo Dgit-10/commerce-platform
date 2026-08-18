@@ -2,6 +2,9 @@ package com.ecommerce.order_service.service.impl;
 
 import com.common_packages.common_packages.event.OrderCreatedEvent;
 import com.common_packages.common_packages.exception.ResourceNotFoundException;
+import com.ecommerce.order_service.client.ProductServiceClient;
+import com.ecommerce.order_service.client.UserServiceClient;
+import com.ecommerce.order_service.client.dto.ProductResponse;
 import com.ecommerce.order_service.dto.CreateOrderRequest;
 import com.ecommerce.order_service.dto.OrderItemDto;
 import com.ecommerce.order_service.dto.OrderResponse;
@@ -16,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,19 +28,55 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderEventProducer orderEventProducer;
+    private final UserServiceClient userServiceClient;
+    private final ProductServiceClient productServiceClient;
 
-    public OrderServiceImpl(OrderRepository orderRepository, OrderEventProducer orderEventProducer) {
+    public OrderServiceImpl(
+            OrderRepository orderRepository,
+            OrderEventProducer orderEventProducer,
+            UserServiceClient userServiceClient,
+            ProductServiceClient productServiceClient) {
+
         this.orderRepository = orderRepository;
         this.orderEventProducer = orderEventProducer;
+        this.userServiceClient = userServiceClient;
+        this.productServiceClient = productServiceClient;
     }
 
     @Override
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request) {
         // Calculate total price dynamically
-        BigDecimal totalAmount = request.getItems().stream()
-                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        userServiceClient.getUser(request.getUserId());
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+
+        List<OrderItem> orderItems = new ArrayList<>();
+
+        for (OrderItemDto itemDto : request.getItems()) {
+
+            ProductResponse product =
+                    productServiceClient.getProduct(itemDto.getProductId());
+
+            if (product.getStockQuantity() < itemDto.getQuantity()) {
+                throw new IllegalArgumentException(
+                        "Insufficient stock for product ID: "
+                                + itemDto.getProductId());
+            }
+
+            BigDecimal itemTotal = product.getPrice()
+                    .multiply(BigDecimal.valueOf(itemDto.getQuantity()));
+
+            totalAmount = totalAmount.add(itemTotal);
+
+            OrderItem item = new OrderItem(
+                    product.getId(),
+                    itemDto.getQuantity(),
+                    product.getPrice()
+            );
+
+            orderItems.add(item);
+        }
 
         Order order = new Order(request.getUserId(), totalAmount);
 
