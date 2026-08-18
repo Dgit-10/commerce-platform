@@ -32,3 +32,5 @@ INSERT INTO order_items
     (order_id, product_id, quantity, price)
 VALUES
     (3, 1, 1, 25.50);
+
+ALTER TABLE orders ALTER COLUMN id RESTART WITH 100;

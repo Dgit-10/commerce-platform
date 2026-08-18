@@ -9,6 +9,9 @@ public class OrderCreatedEvent {
     private Long userId;
     private BigDecimal totalAmount;
     private List<OrderItemEventDto> items;
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
     public OrderCreatedEvent() {}
