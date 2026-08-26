@@ -1,94 +1,118 @@
 package com.ecommerce.api_gateway.filter;
 
 import com.ecommerce.api_gateway.util.JwtUtil;
-
 import io.jsonwebtoken.Claims;
-
-import org.springframework.cloud.gateway.filter.GatewayFilter;
-import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
-
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-
 import org.springframework.stereotype.Component;
-
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
-
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-
-import java.util.List;
+import java.util.UUID;
 
 @Component
-public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> {
+public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private final JwtUtil jwtUtil;
 
-    // Public endpoints that bypass JWT check
+    private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
+
     private static final List<String> OPEN_ENDPOINTS = List.of(
             "/api/v1/users/register",
             "/api/v1/users/login",
-            "/api/v1/products"
+            "/actuator/health",
+            "/actuator/info"
     );
 
     public JwtAuthenticationFilter(JwtUtil jwtUtil) {
-        super(Config.class);
         this.jwtUtil = jwtUtil;
     }
 
-    public static class Config {
-        // Configuration properties if needed in application.yml
-    }
-
     @Override
-    public GatewayFilter apply(Config config) {
-        return (exchange, chain) -> {
-            ServerHttpRequest request = exchange.getRequest();
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        ServerHttpRequest request = exchange.getRequest();
+        String path = request.getURI().getPath();
+        String method = request.getMethod() != null ? request.getMethod().name() : "";
 
-            // Skip authentication for open endpoints
-            if (isOpenEndpoint(request.getURI().getPath(), request.getMethod().name())) {
-                return chain.filter(exchange);
-            }
+        // Ensure correlation ID is present or generate new
+        String correlationId = request.getHeaders().getFirst(CORRELATION_ID_HEADER);
+        if (!StringUtils.hasText(correlationId)) {
+            correlationId = UUID.randomUUID().toString();
+        }
 
-            if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
-                return this.onError(exchange, "Missing Authorization header", HttpStatus.UNAUTHORIZED);
-            }
+        // Add correlation ID to response headers
+        exchange.getResponse().getHeaders().set(CORRELATION_ID_HEADER, correlationId);
 
-            String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return this.onError(exchange, "Invalid Authorization header format", HttpStatus.UNAUTHORIZED);
-            }
+        // Mutator builder for downstream request
+        ServerHttpRequest.Builder requestBuilder = request.mutate()
+                .header(CORRELATION_ID_HEADER, correlationId);
 
-            String token = authHeader.substring(7);
-            if (!jwtUtil.validateToken(token)) {
-                return this.onError(exchange, "Expired or invalid JWT token", HttpStatus.UNAUTHORIZED);
-            }
+        // Allow public endpoints
+        if (isOpenEndpoint(path, method)) {
+            return chain.filter(exchange.mutate().request(requestBuilder.build()).build());
+        }
 
-            // Extract claims and forward headers downstream to modular services
+        // Check Authorization header
+        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
+            return onError(exchange, "Missing or invalid Authorization header", HttpStatus.UNAUTHORIZED);
+        }
+
+        String token = authHeader.substring(7);
+        if (!jwtUtil.validateToken(token)) {
+            return onError(exchange, "Invalid or expired JWT token", HttpStatus.UNAUTHORIZED);
+        }
+
+        try {
             Claims claims = jwtUtil.getAllClaimsFromToken(token);
-            ServerHttpRequest mutatedRequest = request.mutate()
-                    .header("X-User-Id", claims.getSubject())
-                    .header("X-User-Role", claims.get("role", String.class))
-                    .build();
+            String userId = claims.getSubject() != null ? claims.getSubject() : String.valueOf(claims.get("userId"));
+            String email = claims.get("email", String.class);
+            String role = claims.get("role", String.class);
 
-            return chain.filter(exchange.mutate().request(mutatedRequest).build());
-        };
+            if (StringUtils.hasText(userId)) {
+                requestBuilder.header("X-User-Id", userId);
+            }
+            if (StringUtils.hasText(email)) {
+                requestBuilder.header("X-User-Email", email);
+            }
+            if (StringUtils.hasText(role)) {
+                requestBuilder.header("X-User-Role", role);
+            }
+        } catch (Exception e) {
+            return onError(exchange, "Failed to parse JWT claims", HttpStatus.UNAUTHORIZED);
+        }
+
+        return chain.filter(exchange.mutate().request(requestBuilder.build()).build());
     }
 
     private boolean isOpenEndpoint(String path, String method) {
-        // Allow GET requests on products without token
         if (path.startsWith("/api/v1/products") && "GET".equalsIgnoreCase(method)) {
             return true;
         }
         return OPEN_ENDPOINTS.stream().anyMatch(path::startsWith);
     }
 
-    private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus httpStatus) {
+    private Mono<Void> onError(ServerWebExchange exchange, String errMessage, HttpStatus status) {
         ServerHttpResponse response = exchange.getResponse();
-        response.setStatusCode(httpStatus);
-        return response.setComplete();
+        response.setStatusCode(status);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        String jsonError = String.format("{\"success\":false,\"message\":\"%s\",\"timestamp\":\"%s\"}",
+                errMessage, java.time.LocalDateTime.now());
+        byte[] bytes = jsonError.getBytes(StandardCharsets.UTF_8);
+        return response.writeWith(Mono.just(response.bufferFactory().wrap(bytes)));
+    }
+
+    @Override
+    public int getOrder() {
+        return Ordered.HIGHEST_PRECEDENCE + 10;
     }
 }

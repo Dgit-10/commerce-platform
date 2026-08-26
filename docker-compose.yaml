@@ -1,9 +1,15 @@
 version: '3.8'
 
+networks:
+  ecom-network:
+    driver: bridge
+
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: ecom-zookeeper
+    networks:
+      - ecom-network
     ports:
       - "2181:2181"
     environment:
@@ -13,6 +19,8 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: ecom-kafka
+    networks:
+      - ecom-network
     ports:
       - "9092:9092"
     depends_on:
@@ -25,3 +33,135 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  # Kafka Topic Initialization helper
+  kafka-init-topics:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: ecom-kafka-init-topics
+    networks:
+      - ecom-network
+    depends_on:
+      - kafka
+    entrypoint: [ "/bin/sh", "-c" ]
+    command: |
+      "
+      # Wait for Kafka to be ready
+      cub kafka-ready -b kafka:29092 1 30
+
+      # Create required business & DLT topics
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user-registered-topic --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic order-created-topic --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-approved-topic --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-processed-topic --partitions 3 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic order-created-topic.DLT --partitions 1 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-approved-topic.DLT --partitions 1 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-processed-topic.DLT --partitions 1 --replication-factor 1
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user-registered-topic.DLT --partitions 1 --replication-factor 1
+
+      echo 'Kafka topics initialized successfully!'
+      "
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./api-gateway/Dockerfile
+    container_name: ecom-api-gateway
+    networks:
+      - ecom-network
+    ports:
+      - "8080:8080"
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+      - payment-service
+      - notification-service
+    environment:
+      - SERVER_PORT=8080
+      - JWT_SECRET=SuperSecretSigningKeyForEcommercePlatform3YearExpSecretKey123456789
+      - USER_SERVICE_URL=http://user-service:8081
+      - PRODUCT_SERVICE_URL=http://product-service:8082
+      - PAYMENT_SERVICE_URL=http://payment-service:8083
+      - ORDER_SERVICE_URL=http://order-service:8084
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8085
+
+  user-service:
+    build:
+      context: .
+      dockerfile: ./user-service/Dockerfile
+    container_name: ecom-user-service
+    networks:
+      - ecom-network
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka
+    environment:
+      - SERVER_PORT=8081
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - JWT_SECRET=SuperSecretSigningKeyForEcommercePlatform3YearExpSecretKey123456789
+
+  product-service:
+    build:
+      context: .
+      dockerfile: ./product-service/Dockerfile
+    container_name: ecom-product-service
+    networks:
+      - ecom-network
+    ports:
+      - "8082:8082"
+    depends_on:
+      - kafka
+    environment:
+      - SERVER_PORT=8082
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: ./payment-service/Dockerfile
+    container_name: ecom-payment-service
+    networks:
+      - ecom-network
+    ports:
+      - "8083:8083"
+    depends_on:
+      - kafka
+    environment:
+      - SERVER_PORT=8083
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+
+  order-service:
+    build:
+      context: .
+      dockerfile: ./order-service/Dockerfile
+    container_name: ecom-order-service
+    networks:
+      - ecom-network
+    ports:
+      - "8084:8084"
+    depends_on:
+      - kafka
+      - user-service
+      - product-service
+    environment:
+      - SERVER_PORT=8084
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - USER_SERVICE_URL=http://user-service:8081
+      - PRODUCT_SERVICE_URL=http://product-service:8082
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: ./notification-service/Dockerfile
+    container_name: ecom-notification-service
+    networks:
+      - ecom-network
+    ports:
+      - "8085:8085"
+    depends_on:
+      - kafka
+    environment:
+      - SERVER_PORT=8085
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092

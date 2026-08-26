@@ -1,0 +1,46 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 10s
+
+jwt:
+  secret: ${JWT_SECRET:SuperSecretSigningKeyForEcommercePlatform3YearExpSecretKey123456789}
+  expiration-ms: 86400000
+
+services:
+  user-service:
+    url: ${USER_SERVICE_URL:http://localhost:8081}
+  product-service:
+    url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+  payment-service:
+    url: ${PAYMENT_SERVICE_URL:http://localhost:8083}
+  order-service:
+    url: ${ORDER_SERVICE_URL:http://localhost:8084}
+  notification-service:
+    url: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [X-Correlation-ID: %X{correlationId:-none}] %logger{36} - %msg%n"
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.ecommerce.api_gateway: DEBUG
