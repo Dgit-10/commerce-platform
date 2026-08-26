@@ -1,6 +1,8 @@
 package com.ecommerce.order_service.kafka;
 
 import com.common_packages.common_packages.event.OrderCreatedEvent;
+import com.common_packages.common_packages.tracing.KafkaCorrelationUtils;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -19,14 +21,20 @@ public class OrderEventProducer {
     }
 
     public void publishOrderCreatedEvent(OrderCreatedEvent event) {
-        log.info("Publishing OrderCreatedEvent for Order ID: {}", event.getOrderId());
-        kafkaTemplate.send(TOPIC_ORDER_CREATED, String.valueOf(event.getOrderId()), event)
+        log.info("Publishing OrderCreatedEvent for Order ID: {}, Amount: {}", event.getOrderId(), event.getTotalAmount());
+
+        ProducerRecord<String, Object> record =
+                new ProducerRecord<>(TOPIC_ORDER_CREATED, String.valueOf(event.getOrderId()), event);
+
+        KafkaCorrelationUtils.injectCorrelationId(record);
+
+        kafkaTemplate.send(record)
                 .whenComplete((result, ex) -> {
                     if (ex == null) {
-                        log.info("Successfully dispatched OrderCreatedEvent for Order ID: {} to partition: {}",
+                        log.info("Successfully published OrderCreatedEvent for Order ID: {} to partition: {}",
                                 event.getOrderId(), result.getRecordMetadata().partition());
                     } else {
-                        log.error("Failed to dispatch OrderCreatedEvent for Order ID: {}", event.getOrderId(), ex);
+                        log.error("Failed to publish OrderCreatedEvent for Order ID: {}", event.getOrderId(), ex);
                     }
                 });
     }
