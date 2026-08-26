@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    message VARCHAR(1000) NOT NULL,
+    recipient VARCHAR(255),
+    status VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL
+);
