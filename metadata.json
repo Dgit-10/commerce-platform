@@ -1,6 +1,0 @@
-{
-  "name": "E-Commerce Microservices V2 Platform",
-  "description": "V2 Microservices Architecture Dashboard, API Gateway, Distributed Tracing, Payment State Machine & Kafka Simulation Console",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
