@@ -20,7 +20,7 @@ public class ClientConfig {
             if (!StringUtils.hasText(correlationId)) {
                 correlationId = UUID.randomUUID().toString();
             }
-            if (!request.getHeaders().containsKey(CorrelationConstants.CORRELATION_ID_HEADER)) {
+            if (request.getHeaders().get(CorrelationConstants.CORRELATION_ID_HEADER) == null || (request.getHeaders().get(CorrelationConstants.CORRELATION_ID_HEADER) != null && request.getHeaders().get(CorrelationConstants.CORRELATION_ID_HEADER).isEmpty())) {
                 request.getHeaders().add(CorrelationConstants.CORRELATION_ID_HEADER, correlationId);
             }
             return execution.execute(request, body);

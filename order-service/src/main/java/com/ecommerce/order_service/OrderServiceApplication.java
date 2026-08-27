@@ -8,10 +8,10 @@ import org.springframework.web.client.RestClient;
 @SpringBootApplication
 public class OrderServiceApplication {
 
-	@Bean
-	public RestClient.Builder restClientBuilder() {
-		return RestClient.builder();
-	}
+//	@Bean
+//	public RestClient.Builder restClientBuilder() {
+//		return RestClient.builder();
+//	}
 
 	public static void main(String[] args) {
 		SpringApplication.run(OrderServiceApplication.class, args);

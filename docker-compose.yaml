@@ -5,6 +5,10 @@ networks:
     driver: bridge
 
 services:
+
+  # =========================
+  # Zookeeper
+  # =========================
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: ecom-zookeeper
@@ -16,6 +20,10 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
+
+  # =========================
+  # Kafka
+  # =========================
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: ecom-kafka
@@ -28,14 +36,22 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
-  # Kafka Topic Initialization helper
+
+  # =========================
+  # Kafka Topic Initialization
+  # =========================
   kafka-init-topics:
     image: confluentinc/cp-kafka:7.5.0
     container_name: ecom-kafka-init-topics
@@ -43,25 +59,51 @@ services:
       - ecom-network
     depends_on:
       - kafka
-    entrypoint: [ "/bin/sh", "-c" ]
-    command: |
-      "
-      # Wait for Kafka to be ready
-      cub kafka-ready -b kafka:29092 1 30
-
-      # Create required business & DLT topics
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user-registered-topic --partitions 3 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic order-created-topic --partitions 3 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-approved-topic --partitions 3 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-processed-topic --partitions 3 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic order-created-topic.DLT --partitions 1 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-approved-topic.DLT --partitions 1 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-processed-topic.DLT --partitions 1 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user-registered-topic.DLT --partitions 1 --replication-factor 1
-
-      echo 'Kafka topics initialized successfully!'
-      "
-
+    command:
+      - /bin/bash
+      - -c
+      - |
+        set -e
+        
+        echo "========================================"
+        echo "Waiting for Kafka to be ready..."
+        echo "========================================"
+        
+        until kafka-topics --bootstrap-server kafka:29092 --list >/dev/null 2>&1; do
+          echo "Kafka is not ready yet. Waiting 5 seconds..."
+          sleep 5
+        done
+        
+        echo "========================================"
+        echo "Kafka is ready!"
+        echo "Creating topics..."
+        echo "========================================"
+        
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user-registered-topic --partitions 3 --replication-factor 1
+        
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic order-created-topic --partitions 3 --replication-factor 1
+        
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-approved-topic --partitions 3 --replication-factor 1
+        
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-processed-topic --partitions 3 --replication-factor 1
+        
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic order-created-topic.DLT --partitions 1 --replication-factor 1
+        
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-approved-topic.DLT --partitions 1 --replication-factor 1
+        
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic payment-processed-topic.DLT --partitions 1 --replication-factor 1
+        
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user-registered-topic.DLT --partitions 1 --replication-factor 1
+        
+        echo "========================================"
+        echo "Kafka topics initialized successfully!"
+        echo "========================================"
+        
+        echo "Created topics:"
+        kafka-topics --bootstrap-server kafka:29092 --list
+  # =========================
+  # API Gateway
+  # =========================
   api-gateway:
     build:
       context: .
@@ -86,6 +128,10 @@ services:
       - ORDER_SERVICE_URL=http://order-service:8084
       - NOTIFICATION_SERVICE_URL=http://notification-service:8085
 
+
+  # =========================
+  # User Service
+  # =========================
   user-service:
     build:
       context: .
@@ -102,6 +148,10 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - JWT_SECRET=SuperSecretSigningKeyForEcommercePlatform3YearExpSecretKey123456789
 
+
+  # =========================
+  # Product Service
+  # =========================
   product-service:
     build:
       context: .
@@ -117,6 +167,10 @@ services:
       - SERVER_PORT=8082
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
 
+
+  # =========================
+  # Payment Service
+  # =========================
   payment-service:
     build:
       context: .
@@ -132,6 +186,10 @@ services:
       - SERVER_PORT=8083
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
 
+
+  # =========================
+  # Order Service
+  # =========================
   order-service:
     build:
       context: .
@@ -151,6 +209,10 @@ services:
       - USER_SERVICE_URL=http://user-service:8081
       - PRODUCT_SERVICE_URL=http://product-service:8082
 
+
+  # =========================
+  # Notification Service
+  # =========================
   notification-service:
     build:
       context: .

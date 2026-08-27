@@ -141,6 +141,9 @@ mvn clean install
 docker compose up -d
 ```
 
+```bash
+docker compose up -d zookeeper kafka kafka-init-topics
+```
 Verify:
 
 ```bash

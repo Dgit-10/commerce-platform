@@ -1,6 +1,5 @@
 package com.ecommerce.notification_service.kafka;
 
-import com.common_packages.common_packages.event.OrderCreatedEvent;
 import com.common_packages.common_packages.event.PaymentApprovedEvent;
 import com.common_packages.common_packages.event.PaymentProcessedEvent;
 import com.common_packages.common_packages.event.UserRegisteredEvent;

@@ -3,7 +3,7 @@ package com.ecommerce.user_service;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication()
+@SpringBootApplication(scanBasePackages = {"com.ecommerce.user_service", "com.common_packages.common_packages"})
 public class UserServiceApplication {
 
     public static void main(String[] args) {
