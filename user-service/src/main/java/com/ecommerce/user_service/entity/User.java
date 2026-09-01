@@ -24,7 +24,7 @@ public class User {
 
     private String address;
 
-    @Column(nullable = false)
+    @Column(name = "role", nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'USER'")
     private String role;
 
     @Column(nullable = false, updatable = false)

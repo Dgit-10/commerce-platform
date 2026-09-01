@@ -19,9 +19,10 @@ public class UserServiceClient {
                 .build();
     }
 
-    public UserResponse getUser(Long userId) {
+    public UserResponse getUser(Long userId, String authorizationHeader) {
         ServiceResponse<UserResponse> response = restClient.get()
                 .uri("/api/v1/users/{id}", userId)
+                .header("Authorization", authorizationHeader)
                 .retrieve()
                 .body(new ParameterizedTypeReference<ServiceResponse<UserResponse>>() {});
 

@@ -45,9 +45,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse createOrder(CreateOrderRequest request) {
+    public OrderResponse createOrder(CreateOrderRequest request,String authorizationHeader) {
         // Calculate total price dynamically
-        userServiceClient.getUser(request.getUserId());
+        userServiceClient.getUser(request.getUserId(),authorizationHeader);
 
         BigDecimal totalAmount = BigDecimal.ZERO;
 

@@ -24,6 +24,7 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
             @RequestHeader(value = "X-User-Id", required = false) String authUserId,
+            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody CreateOrderRequest request) {
 
         if (authUserId != null && !authUserId.isBlank()) {
@@ -34,7 +35,7 @@ public class OrderController {
             throw new IllegalArgumentException("User ID is required for placing an order");
         }
 
-        OrderResponse response = orderService.createOrder(request);
+        OrderResponse response = orderService.createOrder(request,authorizationHeader);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Order placed successfully. Status: Awaiting Payment Approval", response));
     }
